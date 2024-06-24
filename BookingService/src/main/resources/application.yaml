@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: BookingService
+
+  # JMS Message Broker
+  # activemq:
+
+  # MySQL Database
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update

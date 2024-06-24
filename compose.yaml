@@ -1,0 +1,73 @@
+name: trade_capture
+
+services:
+  activemq:
+    image: "rmohr/activemq"
+    ports:
+      - "8161:8161" # Observability from host
+    networks:
+      - trade-capture
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -f http://localhost:8161"]
+      interval: 5s
+
+  mysql:
+    build: docker/mysql
+    networks:
+      - trade-capture
+    healthcheck:
+      # test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p=root"]
+      interval: 5s
+
+  trade-generator:
+    build: ./TradeGenerator
+    environment:
+      SERVER_PORT: 8080
+      SPRING_ACTIVEMQ_BROKER-URL: tcp://activemq:61616
+      SPRING_ACTIVEMQ_USER: admin
+      SPRING_ACTIVEMQ_PASSWORD: admin
+    networks:
+      - trade-capture
+    depends_on:
+      activemq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  booking-service:
+    build: ./BookingService
+    environment:
+      SERVER_PORT: 8080
+      SPRING_ACTIVEMQ_BROKER-URL: tcp://activemq:61616
+      SPRING_ACTIVEMQ_USER: admin
+      SPRING_ACTIVEMQ_PASSWORD: admin
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/trade_capture
+      SPRING_DATASOURCE_USERNAME: microservice
+      SPRING_DATASOURCE_PASSWORD: abcdefg
+    networks:
+      - trade-capture
+    depends_on:
+      activemq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+  view-service:
+    build: ./ViewService
+    ports:
+      - "8081:8080" # Query by host
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/trade_capture
+      SPRING_DATASOURCE_USERNAME: microservice
+      SPRING_DATASOURCE_PASSWORD: abcdefg
+    networks:
+      - trade-capture
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+networks:
+  trade-capture:
+    driver: bridge
