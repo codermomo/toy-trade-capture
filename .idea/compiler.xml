@@ -10,6 +10,7 @@
         <module name="ViewService" />
         <module name="CommonLibrary" />
         <module name="TradeGenerator" />
+        <module name="Gateway" />
       </profile>
     </annotationProcessing>
   </component>
@@ -17,6 +18,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="BookingService" options="-parameters" />
       <module name="CommonLibrary" options="-parameters" />
+      <module name="Gateway" options="-parameters" />
       <module name="TradeGenerator" options="-parameters" />
       <module name="ViewService" options="-parameters" />
     </option>

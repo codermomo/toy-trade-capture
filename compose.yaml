@@ -56,7 +56,7 @@ services:
   view-service:
     build: ./ViewService
     ports:
-      - "8081:8080" # Query by host
+      - "8081:8080" # Expose this service at host port 8081
     environment:
       SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/trade_capture
@@ -67,6 +67,19 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  gateway:
+    build: ./Gateway
+    ports:
+      - "8080:8080"
+    environment:
+      ROUTES_POSITION-VIEW-SERVICE_URI: http://view-service:8080
+      ROUTES_POSITION-VIEW-SERVICE_PREFIX-PATH: /api/position
+    networks:
+      - trade-capture
+    depends_on:
+      view-service:
+        condition: service_started
 
 networks:
   trade-capture:

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: trade-generator
+  name: trade-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trade-generator
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: trade-generator
+    spec:
+      containers:
+      - image: trade_capture-trade-generator
+        imagePullPolicy: Never
+        name: trade-capture-trade-generator
+        # Purely informational
+        ports:
+        - containerPort: 8080
+        env:
+          - name: SERVER_PORT
+            value: "8080"
+          - name: SPRING_ACTIVEMQ_BROKER-URL
+            value: tcp://activemq:61616
+          - name: SPRING_ACTIVEMQ_USER
+            value: admin
+          - name: SPRING_ACTIVEMQ_PASSWORD
+            value: admin
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "300m"
+status: {}

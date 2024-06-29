@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: gateway
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gateway
+    spec:
+      containers:
+      - image: trade_capture-gateway
+        imagePullPolicy: Never
+        name: trade-capture-gateway-pmw58
+        # Purely informational
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ROUTES_POSITION-VIEW-SERVICE_URI
+          value: http://view-service:8080
+        - name: ROUTES_POSITION-VIEW-SERVICE_PREFIX-PATH
+          value: /api/position
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "300m"
+status: {}
