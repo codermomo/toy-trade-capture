@@ -1,5 +1,5 @@
 ## Toy Trade Capture System
-A trade capture system is responsible for booking (recording) trade executed in the front office. It captures trades
+A trade capture system is responsible for booking (recording) trades executed in the front office. It captures trades
 from various sources, such as electronic trading platforms and manual entry etc, and records details of every trade,
 including the instrument traded, price, and quantity. Trade capture forms the backbone of an investment bank, supporting
 downstream activities, such as risk management, validation and confirmation, clearing and settlement, accounting and 
@@ -23,12 +23,19 @@ domain models used by several microservices.
 JAR files for building docker images. Skip the test stage if tests failed.
 
 #### Docker Containerization only
-1. To deploy the application as containers without Kubernetes, run `docker compose up` in the root directory to start 
-the application. The API gateway is exposed in `localhost:8080` for external access to the trade capture system.
+1. To deploy the application as containers without Kubernetes, run the following command in the root directory to start 
+the application:
+```
+docker compose up
+```
+The API gateway is exposed in `localhost:8080` for external access to the trade capture system.
 2. After a while, you may query the positions of a given trader book by HTTP GET request to 
 `http://localhost:8080/position-view-service/getPositions?bookIds=<trader_books>`. For example,
 `http://localhost:8080/position-view-service/getPositions?bookIds=book1,book2`.
-3. To stop all containers, run `docker compose down`.
+3. To stop all containers:
+```
+docker compose down
+```
 
 #### Docker Containerization with Kubernetes Orchestration
 Except for `activemq`, local images are used for containerization, as specified in Kubernetes configuration files. 
@@ -37,32 +44,58 @@ This is because the author does not want to upload the Docker images to Docker H
 
 1. Build the Docker images for each microservices (`mysql`, `BookingService`, `Gateway`, `TradeGenerator`, 
 `ViewService`). This can be achieved either by (1) following the steps in the above section 
-`Docker Containerization only`, or (2) running several `docker build ...`s:
+**Docker Containerization only**, or (2) running several `docker build ...`s:
 - In `docker/mysql/`, run `docker build -t trade_capture-mysql .`.
 - In `BookingService/`, run `docker build -t trade_capture-booking-service .`.
 - In `Gateway/`, run `docker build -t trade_capture-gateway .`.
 - In `TradeGenerator/`, run `docker build -t trade_capture-trade-generator .`.
 - In `ViewService/`, run `docker build -t trade_capture-view-service .`.
 
-2. Start the `minikube` cluster by `minikube start --cpus 3 --memory 3072`.
-3. Upload the images to the cluster by `minikube image load <image_name>`, 
-like `minikube image load trade_capture-mysql`.
-4. Deploy the application by `kubectl apply -f k8s/` in the root directory.
-5. To monitor the cluster, run `kubectl get all` or `minikube dashboard`.
+2. Start the `minikube` cluster:
+```
+minikube start --cpus 3 --memory 3072
+```
+3. Upload the images to the cluster:
+```
+minikube image load <image_name>
+```
+4. In the root directory, deploy the application:
+```
+kubectl apply -f k8s/
+```
+5. To monitor the cluster:
+```
+kubectl get all
+---
+or
+---
+minikube dashboard
+```
+
 6. Due to the limitation of `minikube` with a `docker` driver, `NodePort` services cannot be accessed directly via 
 `localhost`. Instead, a minikube tunnel has to be established by `minikube service <service-name> --url`. To access the 
-API gateway, run `minikube service gateway --url` when needed.
+API gateway:
+```
+minikube service gateway --url
+```
 - Refer to [here](https://stackoverflow.com/questions/66607112/minikube-on-wsl2-windows-10-minikube-ip-not-reachable) 
 for more information.
 
 7. Suppose `gateway` is exposed in `http://127.0.0.1:37581`. To query the positions, place a HTTP GET request to 
 `http://127.0.0.1:37581/position-view-service/getPositions?bookIds=book1,book2`.
-8. Stop the application and delete all containers by `kubectl delete all --all`.
-9. Stop the cluster by `minikube stop`.
+8. Stop the application and delete all containers: 
+```
+kubectl delete all --all
+```
+9. Stop the cluster:
+```
+minikube stop
+```
 
 
-### Architecture
-TODO
+### System Architecture
+![System architecture](/resources/Architecture.png "System architecture")
+**TODO: Improve and upload database schema**
 
 
 ### A Closer Look at Docker
@@ -101,14 +134,14 @@ For one, `docker run -p 9999:8080 --name my_gateway trade_capture-gateway` creat
 from the image `trade_capture-gateway` and enables forwarding requests to host machine at port `9999` to `my_gateway`'s 
 port `8080`. This means requests to `localhost:9999` on the host is forwarded to `localhost:8080` in `my_gateway`.
 
-In a `docker compose` file, port publishing can be configured by the `ports` section under each service.
+Or, in a `docker compose` file, port publishing can be configured by the `ports` section under each service.
 
 Note that in a `Dockerfile`, the `EXPOSE` instruction is only used to indicate the packaged application will use the 
 specified port. It does not publish the port by default. So one has to publish the ports manually as above.
 
 ##### Communication between Containers
 Communication between containers cannot be achieved directly by the method in the previous section 
-`Communication from Host to Container`, because the `localhost` in each container is different from the `localhost` on 
+**Communication from Host to Container**, because the `localhost` in each container is different from the `localhost` on 
 the host, meaning that traffic will not be forward to other containers by default. Also, publishing container ports to 
 the host only for internal communication between containers does not sound a good practice and may lead to security 
 threats.
