@@ -13,11 +13,16 @@ technologies. Kafka only supports topic-based message destination model. It is b
 data, but without transport guarantee. To ensure reliability, messages are persisted with a custom retention period to 
 enable reliable recovery, in case of losses in transportation.
 
-#### Tradeoffs
+#### Tradeoffs of using Kafka
 Pros: High throughput, high availability and fault tolerance, high scalability, message persistence and data replication
-that enable data recovery.
+that enable data recovery, potentially lower latency due to less processing at brokers.
 
 Cons: Reliability transportation needs to be implemented externally, high complexity of technology.
+
+#### References
+- [Kafka](https://kafka.apache.org/)
+- [Quix](https://aws.amazon.com/compare/the-difference-between-mysql-vs-postgresql/)
+- [Baeldung](https://www.baeldung.com/apache-activemq-vs-kafka)
 
 
 ### Kafka Components
