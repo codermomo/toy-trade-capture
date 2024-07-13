@@ -1,77 +1,165 @@
 name: trade_capture
 
 services:
-  activemq:
-    image: "rmohr/activemq"
-    ports:
-      - "8161:8161" # Observability from host
+  bootstrap-service:
+    build: docker/bootstrap-service
+    environment:
+      BOOTSTRAP_SCHEMA_REGISTRY: true
+      BOOTSTRAP_KAFKA_SINK_CONNECTOR: false
     networks:
       - trade-capture
-    healthcheck:
-      test: ["CMD-SHELL", "curl -k -f http://localhost:8161"]
-      interval: 5s
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      kafka-sink-connector:
+        condition: service_healthy
 
-  mysql:
-    build: docker/mysql
+  kafka0:
+    image: "bitnami/kafka"
+    # "hostname" is a field that specifies the (host)name of the container, associated with an internal IP (say, XYZ).
+    # By default, Docker assigns the container ID as its "hostname". In addition, "localhost" is a hostname for its
+    # loopback address (127.0.0.1). The list of hostnames can be viewed by "cat /etc/hosts".
+    # However, even with hostname unset, running "getent hosts kafka0" resolves to the same internal IP as XYZ.
+    # This is probably due to name resolution by Docker's internal DNS server.
+    # Therefore,
+    environment:
+      # https://kafka.apache.org/documentation/#listener_configuration
+      # https://www.confluent.io/blog/kafka-listeners-explained/
+      # https://www.confluent.io/en-gb/blog/kafka-client-cannot-connect-to-broker-on-aws-on-docker-etc/
+      # https://gsfl3101.medium.com/kafka-raft-kraft-cluster-configuration-from-dev-to-prod-part-1-8a844fabf804
+      # A broker needs a listener for CLIENT connection.
+      # A controller needs a listener for CONTROLLER connection.
+      # Both "empty hostname" and "0.0.0.0" will bind kafka to all available interfaces in the container, implying that
+      # both localhost and kafka0 will listen the corresponding traffic using such settings.
+      # By observation, KAFKA_CFG_LISTENERS must bind to kafka0, but not localhost.
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_LISTENERS: INTERNAL_DOCKER_TRAFFIC://kafka0:9092,CONTROLLER://kafka0:9093,EXTERNAL_CLIENT://kafka0:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL_DOCKER_TRAFFIC:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL_CLIENT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka0:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL_DOCKER_TRAFFIC
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL_DOCKER_TRAFFIC://kafka0:9092,EXTERNAL_CLIENT://localhost:9094
+    volumes:
+      - kafka_volume:/bitnami/kafka
     networks:
       - trade-capture
     healthcheck:
-      # test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$MYSQL_ROOT_PASSWORD"]
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p=root"]
-      interval: 5s
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server kafka0:9092 || exit 1"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+
+  schema-registry:
+    image: "confluentinc/cp-schema-registry"
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka0:9092
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8072
+    networks:
+      - trade-capture
+    healthcheck:
+      test: ["CMD-SHELL", "curl --output /dev/null --silent --head --fail http://schema-registry:8072/subjects"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+    depends_on:
+      kafka0:
+        condition: service_healthy
+
+  kafka-sink-connector:
+    build: docker/kafka-sink-connector
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka0:9092
+      CONNECT_GROUP_ID: connect-cluster-1
+      CONNECT_REST_HOST_NAME: kafka-sink-connector
+      CONNECT_REST_PORT: 8083
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-sink-connector
+      CONNECT_REST_ADVERTISED_PORT: 8083
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-statuses
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: io.confluent.connect.json.JsonSchemaConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8072
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.json.JsonSchemaConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8072
+    command:
+      - bash
+      - -c
+      - |
+        echo "Launching Connect Worker"
+        /etc/confluent/docker/run &
+        sleep infinity
+    networks:
+      - trade-capture
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://kafka-sink-connector:8083/connectors" ]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+    depends_on:
+      kafka0:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    build: docker/postgres
+    environment:
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_USER: mysu
+      POSTGRES_DB: trade_capture
+      PGDATA: /var/lib/postgresql/data
+    # https://stackoverflow.com/questions/61623124/persist-data-on-postgres-docker-with-a-volume-when-restarting-the-container
+    volumes:
+      - pg_volume:/var/lib/postgresql/data
+    networks:
+      - trade-capture
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mysu -d trade_capture"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
 
   trade-generator:
     build: ./TradeGenerator
     environment:
       SERVER_PORT: 8080
-      SPRING_ACTIVEMQ_BROKER-URL: tcp://activemq:61616
-      SPRING_ACTIVEMQ_USER: admin
-      SPRING_ACTIVEMQ_PASSWORD: admin
+      KAFKA_BOOTSTRAP-SERVER_URL: kafka0:9092
+      KAFKA_SCHEMA-REGISTRY_URL: http://schema-registry:8072
+      KAFKA_TOPICS_TRADES_NAME: trades
     networks:
       - trade-capture
     depends_on:
-      activemq:
+      kafka0:
         condition: service_healthy
-      mysql:
+      schema-registry:
         condition: service_healthy
-
-  booking-service:
-    build: ./BookingService
-    environment:
-      SERVER_PORT: 8080
-      SPRING_ACTIVEMQ_BROKER-URL: tcp://activemq:61616
-      SPRING_ACTIVEMQ_USER: admin
-      SPRING_ACTIVEMQ_PASSWORD: admin
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/trade_capture
-      SPRING_DATASOURCE_USERNAME: microservice
-      SPRING_DATASOURCE_PASSWORD: abcdefg
-    networks:
-      - trade-capture
-    depends_on:
-      activemq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+      bootstrap-service:
+        condition: service_completed_successfully
 
   view-service:
     build: ./ViewService
-    ports:
-      - "8081:8080" # Expose this service at host port 8081
     environment:
       SERVER_PORT: 8080
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/trade_capture
-      SPRING_DATASOURCE_USERNAME: microservice
-      SPRING_DATASOURCE_PASSWORD: abcdefg
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trade_capture
+      SPRING_DATASOURCE_USERNAME: mysu
+      SPRING_DATASOURCE_PASSWORD: mypassword
     networks:
       - trade-capture
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
 
   gateway:
     build: ./Gateway
     ports:
-      - "8080:8080"
+      - "8080:8080" # Host port -> Container service port
     environment:
       ROUTES_POSITION-VIEW-SERVICE_URI: http://view-service:8080
       ROUTES_POSITION-VIEW-SERVICE_PREFIX-PATH: /api/position
@@ -80,6 +168,16 @@ services:
     depends_on:
       view-service:
         condition: service_started
+
+volumes:
+  kafka_volume:
+    driver: local
+  pg_volume:
+    driver: local
+#    driver_opts:
+#      o: bind
+#      type: none
+#      device:
 
 networks:
   trade-capture:

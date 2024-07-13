@@ -1,5 +1,65 @@
 spring:
   application:
     name: TradeGenerator
-  # JMS Message Broker
-  # activemq:
+
+logging:
+  config: classpath:log4j2.xml
+
+publisher:
+  publish-interval-ms: 2000
+
+kafka:
+  bootstrap-server:
+    url: localhost:9094
+  schema-registry:
+    url: http://localhost:8072
+  topics:
+    trades:
+      name: trades
+      partitions: 1
+      replicas: 1
+
+generator:
+  source-ids:
+    - strat1
+    - strat2
+    - strat3
+  book-ids:
+    - book1
+    - book2
+    - book3
+  instrument-ids:
+    - AAPL
+    - BRK/B
+    - NVDA
+    - TQQQ
+  instruments:
+    AAPL:
+      instrument-type: STOCK
+      base-currency: USD
+      counterparty-ids:
+        - NASDAQ
+    # Special treatment ["..."] is needed for special characters in key, for Spring map binding
+    # https://stackoverflow.com/questions/50910550/spring-boot-yaml-configuration-with-url-in-key-no-longer-loads-correctly-with-ve
+    # https://github.com/spring-projects/spring-boot/issues/13404
+    "[BRK/B]":
+      instrument-type: STOCK
+      base-currency: USD
+      counterparty-ids:
+        - NYSE
+    NVDA:
+      instrument-type: STOCK
+      base-currency: USD
+      counterparty-ids:
+        - NASDAQ
+    TQQQ:
+      instrument-type: STOCK
+      base-currency: USD
+      counterparty-ids:
+        - NASDAQ
+
+  min-quantity: -100
+  max-quantity: 100
+  min-price: 10
+  max-price: 200
+  trade-status: FILLED

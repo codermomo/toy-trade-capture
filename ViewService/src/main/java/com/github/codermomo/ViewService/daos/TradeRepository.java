@@ -11,7 +11,8 @@ import java.util.UUID;
 
 @Repository
 public interface TradeRepository extends CrudRepository<Trade, UUID> {
+    // JPQL, which match Entity name and class members then convert them into a SQL
     @Query("SELECT new com.github.codermomo.ViewService.models.Position(t.bookId, t.instrumentId, SUM(t.quantity)) "
-    + "FROM Trade AS t WHERE t.bookId = ?1 GROUP BY t.bookId, t.instrumentId")
+    + "FROM trade AS t WHERE t.bookId = ?1 GROUP BY t.bookId, t.instrumentId")
     List<Position> aggregatePositionsByBookId(String bookId);
 }

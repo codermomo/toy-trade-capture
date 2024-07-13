@@ -1,10 +1,13 @@
 package com.github.codermomo.TradeGenerator.services;
 
 import com.github.codermomo.CommonLibrary.models.Trade;
-import jakarta.jms.Destination;
-import org.apache.activemq.command.ActiveMQQueue;
+import com.github.codermomo.CommonLibrary.models.TradeKafkaDto;
+import com.github.codermomo.TradeGenerator.configs.KafkaProducerClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jms.core.JmsTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -12,24 +15,25 @@ import org.springframework.stereotype.Service;
 @Service
 @EnableScheduling
 public class TradePublisher {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TradePublisher.class);
+
     @Autowired
-    private JmsTemplate jmsTemplate;
+    private KafkaProducerClient kafkaProducerClient;
     @Autowired
     private TradeGenerator tradeGenerator;
 
-    // Hard-coded
-    private final Destination destination = new ActiveMQQueue("trades");
-    private final long publishInterval = 2000;
-
-    private void publishRandomTrade(Destination destination) {
+    private void publishRandomTrade() {
         Trade trade = tradeGenerator.generateRandomTrade();
 
-        assert trade != null;
-        jmsTemplate.convertAndSend(destination, trade);
+        if (trade == null) {
+            LOGGER.error("Generated trade should not be null. Terminating this application.");
+            System.exit(1);
+        }
+        kafkaProducerClient.sendTradeMessage(TradeKafkaDto.convertToDto(trade));
     }
 
-    @Scheduled(fixedRate = publishInterval)
+    @Scheduled(fixedRateString = "${publisher.publish-interval-ms}")
     public void scheduledPublishRandomTrade() {
-        publishRandomTrade(destination);
+        publishRandomTrade();
     }
 }

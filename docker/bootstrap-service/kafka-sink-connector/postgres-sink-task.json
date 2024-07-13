@@ -1,0 +1,23 @@
+{
+  "name": "postgres-sink-connector",
+  "config": {
+    "topics": "trades",
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "connection.url": "jdbc:postgresql://postgres:5432/trade_capture",
+    "connection.user": "mysu",
+    "connection.password": "mypassword",
+    "table.name.format": "trade",
+    "pk.mode": "record_value",
+    "pk.fields": "trade_id",
+    "batch.size": 0,
+    "transforms": "TimestampConverter,RenameField",
+    "transforms.TimestampConverter.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+    "transforms.TimestampConverter.format": "yyyy-MM-dd'T'HH:mm:ss",
+    "transforms.TimestampConverter.field": "tradeDateTimeStr",
+    "transforms.TimestampConverter.unix.precision": "microseconds",
+    "transforms.TimestampConverter.target.type": "Timestamp",
+    "transforms.RenameField.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+    "transforms.RenameField.renames": "tradeId:trade_id,tradeDateTimeStr:trade_date_time,instrumentId:instrument_id,instrumentType:instrument_type,unitPrice:unit_price,baseCurrency:base_currency,sourceId:source_id,bookId:book_id,counterpartyId:counterparty_id,tradeStatus:trade_status",
+    "auto.create": false
+  }
+}
