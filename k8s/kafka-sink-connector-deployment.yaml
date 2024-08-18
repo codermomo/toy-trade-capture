@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: kafka-sink-connector
+  name: kafka-sink-connector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-sink-connector
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kafka-sink-connector
+    spec:
+      hostname: kafka-sink-connector
+      containers:
+      - image: trade_capture-kafka-sink-connector
+        imagePullPolicy: Never
+        name: trade-capture-kafka-sink-connector-qs7tw
+        command: ["bash"]
+        args: ["-c", "echo \"Launching Connect Worker\"; /etc/confluent/docker/run & sleep infinity"]
+        ports:
+        - containerPort: 8083
+        env:
+          - name: CONNECT_BOOTSTRAP_SERVERS
+            value: kafka0:9092
+          - name: CONNECT_GROUP_ID
+            value: connect-cluster-1
+          - name: CONNECT_REST_HOST_NAME
+            value: kafka-sink-connector
+          - name: CONNECT_REST_PORT
+            value: "8083"
+          - name: CONNECT_REST_ADVERTISED_HOST_NAME
+            value: kafka-sink-connector
+          - name: CONNECT_REST_ADVERTISED_PORT
+            value: "8083"
+          - name: CONNECT_CONFIG_STORAGE_TOPIC
+            value: connect-configs
+          - name: CONNECT_OFFSET_STORAGE_TOPIC
+            value: connect-offsets
+          - name: CONNECT_STATUS_STORAGE_TOPIC
+            value: connect-statuses
+          - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
+            value: "1"
+          - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
+            value: "1"
+          - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
+            value: "1"
+          - name: CONNECT_KEY_CONVERTER
+            value: io.confluent.connect.json.JsonSchemaConverter
+          - name: CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL
+            value: http://schema-registry-service:8072
+          - name: CONNECT_VALUE_CONVERTER
+            value: io.confluent.connect.json.JsonSchemaConverter
+          - name: CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL
+            value: http://schema-registry-service:8072
+        readinessProbe:
+          exec:
+            command:
+              - curl
+              - -f
+              - http://kafka-sink-connector:8083/connectors
+          initialDelaySeconds: 80
+          periodSeconds: 15
+          timeoutSeconds: 1
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "400Mi"
+            cpu: "400m"
+          limits:
+            memory: "2000Mi"
+            cpu: "800m"
+status: {}

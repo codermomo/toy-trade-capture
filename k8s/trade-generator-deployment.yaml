@@ -27,12 +27,12 @@ spec:
         env:
           - name: SERVER_PORT
             value: "8080"
-          - name: SPRING_ACTIVEMQ_BROKER-URL
-            value: tcp://activemq:61616
-          - name: SPRING_ACTIVEMQ_USER
-            value: admin
-          - name: SPRING_ACTIVEMQ_PASSWORD
-            value: admin
+          - name: KAFKA_BOOTSTRAP-SERVER_URL
+            value: kafka0:9092
+          - name: KAFKA_SCHEMA-REGISTRY_URL
+            value: http://schema-registry-service:8072
+          - name: KAFKA_TOPICS_TRADES_NAME
+            value: trades
         livenessProbe:
           httpGet:
             path: /actuator/health/liveness

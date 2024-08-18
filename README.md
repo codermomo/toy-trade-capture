@@ -53,7 +53,7 @@ This is because the author does not want to upload the Docker images to Docker H
 
 2. Start the `minikube` cluster:
 ```
-minikube start --cpus 3 --memory 3072
+minikube start --cpus 4 --memory 4608
 ```
 3. Upload the images to the cluster:
 ```

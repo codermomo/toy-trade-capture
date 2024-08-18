@@ -5,7 +5,9 @@ services:
     build: docker/bootstrap-service
     environment:
       BOOTSTRAP_SCHEMA_REGISTRY: true
+      SCHEMA_REGISTRY_URL: http://schema-registry:8072/subjects/trades-value/versions
       BOOTSTRAP_KAFKA_SINK_CONNECTOR: false
+      KAFKA_SINK_CONNECTOR_URL: kafka-sink-connector:8083/connectors
     networks:
       - trade-capture
     depends_on:

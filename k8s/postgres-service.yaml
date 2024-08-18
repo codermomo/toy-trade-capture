@@ -3,18 +3,18 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
-    app: activemq
-  name: activemq
+    app: postgres
+  name: postgres
 spec:
   ports:
-  - name: 61616-61616
+  - name: 5432-5432
     # Port exposed by the underlying pod
-    port: 61616
+    port: 5432
     protocol: TCP
     # Port exposed by this service, such that traffics to targetPort will be directed to port exposed by the pod
-    targetPort: 61616
+    targetPort: 5432
   selector:
-    app: activemq
+    app: postgres
   type: ClusterIP
 status:
   loadBalancer: {}

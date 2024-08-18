@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    # Do not name it as schema-registry, or else SCHEMA_REGISTRY_PORT is created automatically that causes issues
+    app: schema-registry-service
+  name: schema-registry-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-registry-service
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: schema-registry-service
+    spec:
+      hostname: schema-registry-service
+      containers:
+      - image: confluentinc/cp-schema-registry
+        name: cp-schema-registry
+        ports:
+        - containerPort: 8072
+        env:
+          - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+            value: kafka0:9092
+          - name: SCHEMA_REGISTRY_HOST_NAME
+            value: schema-registry-service
+          - name: SCHEMA_REGISTRY_LISTENERS
+            value: http://schema-registry-service:8072
+        readinessProbe:
+          exec:
+            command:
+              - curl
+              - --output
+              - /dev/null
+              - --silent
+              - --head
+              - --fail
+              - http://schema-registry-service:8072/subjects
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          timeoutSeconds: 1
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "300m"
+status: {}

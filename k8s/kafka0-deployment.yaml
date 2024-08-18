@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: kafka0
+  name: kafka0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka0
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kafka0
+    spec:
+      hostname: kafka0
+      containers:
+      - image: bitnami/kafka
+        name: kafka
+        ports:
+        - containerPort: 9092
+        - containerPort: 9093
+        env:
+          - name: KAFKA_CFG_NODE_ID
+            value: "0"
+          - name: KAFKA_CFG_PROCESS_ROLES
+            value: controller,broker
+          - name: KAFKA_CFG_LISTENERS
+            value: INTERNAL_K8S_TRAFFIC://kafka0:9092,CONTROLLER://kafka0:9093
+          - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+            value: INTERNAL_K8S_TRAFFIC:PLAINTEXT,CONTROLLER:PLAINTEXT
+          - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+            value: 0@kafka0:9093
+          - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+            value: CONTROLLER
+          - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+            value: INTERNAL_K8S_TRAFFIC
+          - name: KAFKA_CFG_ADVERTISED_LISTENERS
+            value: INTERNAL_K8S_TRAFFIC://kafka0:9092
+        readinessProbe:
+          exec:
+            command:
+              - kafka-topics.sh
+              - --list
+              - --bootstrap-server
+              - kafka0:9092
+              - "||"
+              - exit
+              - "1"
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          # kafka-topics.sh is slow
+          timeoutSeconds: 14
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "600Mi"
+            cpu: "200m"
+          limits:
+            memory: "1500Mi"
+            cpu: "600m"
+status: {}

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: postgres
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - image: trade_capture-postgres
+        imagePullPolicy: Never
+        name: trade-capture-postgres-dpnhr
+        ports:
+        - containerPort: 5432
+        env:
+          - name: POSTGRES_PASSWORD
+            value: mypassword
+          - name: POSTGRES_USER
+            value: mysu
+          - name: POSTGRES_DB
+            value: trade_capture
+          - name: PGDATA
+            value: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - mysu
+              - -d
+              - trade_capture
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "300m"
+status: {}

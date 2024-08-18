@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: schema-registry-service
+  name: schema-registry-service
+spec:
+  ports:
+  - name: 8072-8072
+    # Port exposed by the underlying pod
+    port: 8072
+    protocol: TCP
+    # Port exposed by this service, such that traffics to targetPort will be directed to port exposed by the pod
+    targetPort: 8072
+  selector:
+    app: schema-registry-service
+  type: ClusterIP
+status:
+  loadBalancer: {}

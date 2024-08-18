@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: null
+  name: bootstrap-job
+spec:
+  completions: 1
+  template:
+    metadata:
+      creationTimestamp: null
+    spec:
+      containers:
+      - image: trade_capture-bootstrap-service
+        imagePullPolicy: Never
+        name: bootstrap-job
+        env:
+          - name: BOOTSTRAP_SCHEMA_REGISTRY
+            value: "true"
+          - name: SCHEMA_REGISTRY_URL
+            value: http://schema-registry-service:8072/subjects/trades-value/versions
+          - name: BOOTSTRAP_KAFKA_SINK_CONNECTOR
+            value: "true"
+          - name: KAFKA_SINK_CONNECTOR_URL
+            value: kafka-sink-connector:8083/connectors
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "300m"
+      restartPolicy: OnFailure
+status: {}

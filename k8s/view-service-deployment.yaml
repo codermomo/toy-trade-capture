@@ -28,16 +28,16 @@ spec:
         - name: SERVER_PORT
           value: "8080"
         - name: SPRING_DATASOURCE_URL
-          value: jdbc:mysql://mysql:3306/trade_capture
+          value: jdbc:postgresql://postgres:5432/trade_capture
         - name: SPRING_DATASOURCE_USERNAME
-          value: microservice
+          value: mysu
         - name: SPRING_DATASOURCE_PASSWORD
-          value: abcdefg
+          value: mypassword
         livenessProbe:
           httpGet:
             path: /actuator/health/liveness
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
           httpGet:
@@ -47,7 +47,7 @@ spec:
           periodSeconds: 30
         resources:
           requests:
-            memory: "64Mi"
+            memory: "100Mi"
             cpu: "100m"
           limits:
             memory: "300Mi"
